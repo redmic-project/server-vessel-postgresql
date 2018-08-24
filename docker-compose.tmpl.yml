@@ -1,0 +1,20 @@
+version: '3.5'
+
+services:
+  postgres:
+    image: ${IMAGE_NAME}:${IMAGE_TAG:-latest}
+    environment:
+      - POSTGRES_PASSWORD
+      - POSTGRES_USER
+      - POSTGRES_DB
+      - PGDATA=/var/lib/postgresql/data/db-files/
+    networks:
+      postgres-net:
+        aliases:
+          - ais-db
+    volumes:
+      - ais-postgres-vol:/var/lib/postgresql/data
+
+networks:
+  postgres-net:
+    external: true
