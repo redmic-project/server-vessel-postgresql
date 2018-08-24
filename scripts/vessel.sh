@@ -27,10 +27,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  d double precision,
 	  imo integer,
 	  heading integer,
-	  navStat integer,
+	  "navStat" integer,
 	  name text,
 	  dest text,
-	  callSign text,
+	  "callSign" text,
 	  eta text,
 	  CONSTRAINT "mmsi_date_last_position" UNIQUE ("mmsi", "tstamp")
 	)
@@ -103,10 +103,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  d double precision,
 	  imo integer,
 	  heading integer,
-	  navStat integer,
+	  "navStat" integer,
 	  name text,
 	  dest text,
-	  callSign text,
+	  "callSign" text,
 	  eta text,
 	  PRIMARY KEY (uuid),
 	  CONSTRAINT "mmsi_date_last_week" UNIQUE ("mmsi", "tstamp")
