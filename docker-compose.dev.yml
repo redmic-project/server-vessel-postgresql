@@ -4,3 +4,7 @@ services:
   postgres:
     container_name: postgres
     restart: on-failure:3
+
+volumes:
+  ais-postgres-vol:
+    name: ais-postgres-vol
