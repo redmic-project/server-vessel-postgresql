@@ -108,7 +108,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  dest text,
 	  "callSign" text,
 	  eta text,
-	  PRIMARY KEY (uuid)
+	  PRIMARY KEY ("mmsi", "tstamp"),
+	  CONSTRAINT "mmsi_date_last_position" UNIQUE ("mmsi", "tstamp")
 	)
 	WITH (
 	  OIDS=FALSE
