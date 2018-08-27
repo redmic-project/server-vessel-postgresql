@@ -1,8 +1,8 @@
 version: '3.5'
 
 services:
-  postgres:
-    container_name: postgres
+  postgresql:
+    container_name: vessel-postgres
     restart: on-failure:3
 
 volumes:
