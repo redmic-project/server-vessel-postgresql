@@ -3,13 +3,15 @@ stages:
   - test-package
   - deploy
 
+variables:
+  DOCKER_DRIVER: overlay2
+
+services:
+  - docker:dind
+
 docker-build-commit-non-master-branches:
   stage: package
   image: docker:stable
-  variables:
-    DOCKER_DRIVER: overlay2
-  services:
-    - docker:dind
   only:
     - branches
   except:
@@ -22,10 +24,6 @@ docker-build-commit-non-master-branches:
 docker-build-commit-master-branch:
   stage: package
   image: docker:stable
-  variables:
-    DOCKER_DRIVER: overlay2
-  services:
-    - docker:dind
   only:
     - master
   script:
@@ -36,10 +34,6 @@ docker-build-commit-master-branch:
 docker-tag-already-built-image:
   stage: package
   image: docker:stable
-  variables:
-    DOCKER_DRIVER: overlay2
-  services:
-    - docker:dind
   only:
     - tags
   script:
@@ -50,11 +44,7 @@ docker-tag-already-built-image:
 container-scanning:
   stage: test-package
   image: docker:stable
-  variables:
-    DOCKER_DRIVER: overlay2
   allow_failure: true
-  services:
-    - docker:stable-dind
   only:
     - branches
   except:
@@ -74,51 +64,70 @@ container-scanning:
       -w clair-whitelist.yml ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA} || true
   artifacts:
     paths: [gl-sast-container-report.json]
+
 deploy-dev:
   stage: deploy
   image: registry.gitlab.com/redmic-project/docker/docker-deploy
   variables:
-    DOCKER_DRIVER: overlay2
     SSH_REMOTE: ${DEV_SSH_REMOTE}
-    SERVICE: ${CI_PROJECT_NAME}
+    STACK: vessel
+    SERVICES_TO_CHECK: vessel_${CI_PROJECT_NAME}
     IMAGE_NAME: ${CI_REGISTRY_IMAGE}
     IMAGE_TAG: ${CI_COMMIT_SHA}
     COMPOSE_FILE: docker-compose.tmpl.yml:docker-compose.dev.yml
-    STATUS_CHECK_DELAY: 60
-  services:
-    - docker:dind
+    POSTGRES_USER: ${AIS_POSTGRES_USER}
+    POSTGRES_PASSWORD: ${AIS_POSTGRES_PASSWORD}
   script:
     - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG}
-      COMPOSE_FILE=${COMPOSE_FILE} POSTGRES_USER=${AIS_POSTGRES_USER}
-      POSTGRES_PASSWORD=${AIS_POSTGRES_PASSWORD}
+      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
+      POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  environment:
+    name: dev
+  only:
+    - dev
+  when: manual
+
+deploy-supporting-branch:
+  stage: deploy
+  image: registry.gitlab.com/redmic-project/docker/docker-deploy
+  variables:
+    SSH_REMOTE: ${DEV_SSH_REMOTE}
+    STACK: vessel
+    SERVICES_TO_CHECK: vessel_${CI_PROJECT_NAME}
+    IMAGE_NAME: ${CI_REGISTRY_IMAGE}
+    IMAGE_TAG: ${CI_COMMIT_SHA}
+    COMPOSE_FILE: docker-compose.tmpl.yml:docker-compose.dev.yml
+    POSTGRES_USER: ${AIS_POSTGRES_USER}
+    POSTGRES_PASSWORD: ${AIS_POSTGRES_PASSWORD}
+  script:
+    - >
+      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
+      POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
   environment:
     name: dev
   only:
     - branches
   except:
     - master
+    - dev
   when: manual
 
 deploy-pro:
   stage: deploy
   image: registry.gitlab.com/redmic-project/docker/docker-deploy
   variables:
-    DOCKER_DRIVER: overlay2
     SSH_REMOTE: ${PRO_SSH_REMOTE}
     STACK: vessel
     SERVICES_TO_CHECK: vessel_${CI_PROJECT_NAME}
     IMAGE_NAME: ${CI_REGISTRY_IMAGE}
     IMAGE_TAG: ${CI_COMMIT_SHA}
     COMPOSE_FILE: docker-compose.tmpl.yml:docker-compose.prod.yml
-    STATUS_CHECK_DELAY: 60
-  services:
-    - docker:dind
+    POSTGRES_USER: ${AIS_POSTGRES_USER}
+    POSTGRES_PASSWORD: ${AIS_POSTGRES_PASSWORD}
   script:
     - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG}
-      COMPOSE_FILE=${COMPOSE_FILE} POSTGRES_USER=${AIS_POSTGRES_USER}
-      POSTGRES_PASSWORD=${AIS_POSTGRES_PASSWORD}
+      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
+      POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
   environment:
     name: pro
   only:
