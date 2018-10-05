@@ -1,0 +1,30 @@
+version: '3.5'
+
+services:
+  postgresql:
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+          - engine.labels.availability_zone == ${AWS_REGION}${DESIRED_WORKER_ID}
+      restart_policy:
+        condition: on-failure
+        delay: 1m
+        window: 3m
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1G
+        reservations:
+          memory: 820M
+
+volumes:
+  ais-postgres-vol:
+    name: "ais-postgres-vol"
+    driver: "cloudstor:aws"
+    driver_opts:
+      backing: relocatable
+      size: 50
+      ebstype: gp2
