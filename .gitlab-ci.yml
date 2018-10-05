@@ -89,7 +89,7 @@ deploy-dev:
       deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
       POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
   environment:
-    name: dev
+    name: dev/postgresql
   only:
     - dev
   except:
@@ -114,7 +114,7 @@ deploy-supporting-branch:
       deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
       POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
   environment:
-    name: dev
+    name: dev/postgresql
   only:
     - branches
   except:
@@ -142,7 +142,7 @@ deploy-pro:
       deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
       POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} AWS_REGION=${AWS_REGION}
   environment:
-    name: pro
+    name: pro/postgresql
   only:
     - master
   except:
@@ -172,7 +172,7 @@ deploy-backup-dev:
       BUCKET_BACKUP_DB=${BUCKET_BACKUP_DB} AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
   environment:
-    name: dev
+    name: dev/backup-db
   only:
     - dev
   except:
@@ -202,7 +202,7 @@ deploy-backup-supporting-branch:
       BUCKET_BACKUP_DB=${BUCKET_BACKUP_DB} AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
   environment:
-    name: dev
+    name: dev/backup-db
   only:
     - branches
   except:
@@ -235,7 +235,7 @@ deploy-backup-pro:
       POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME} BUCKET_BACKUP_DB=${BUCKET_BACKUP_DB}
       AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
   environment:
-    name: pro
+    name: pro/backup-db
   only:
     - master
   except:
@@ -250,7 +250,5 @@ scheduled-backup-pro:
     SERVICE: vessel_backup-db
   script:
     - relaunch.sh
-  environment:
-    name: pro
   only:
     - schedules
