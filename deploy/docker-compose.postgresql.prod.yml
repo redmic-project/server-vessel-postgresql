@@ -8,9 +8,8 @@ services:
       placement:
         constraints:
           - node.role == worker
-          - engine.labels.availability_zone == ${AWS_REGION}${DESIRED_WORKER_ID}
+          - engine.labels.availability_zone == ${AWS_REGION}${DESIRED_WORKER_AZ}
       restart_policy:
-        condition: on-failure
         delay: 1m
         window: 3m
       resources:
