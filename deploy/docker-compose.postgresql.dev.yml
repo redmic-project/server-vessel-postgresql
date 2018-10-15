@@ -6,7 +6,6 @@ services:
       mode: replicated
       replicas: 1
       restart_policy:
-        condition: on-failure
         delay: 1m
         window: 3m
       resources:
