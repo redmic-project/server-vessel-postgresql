@@ -13,7 +13,7 @@ services:
         aliases:
           - ais-db
     volumes:
-      - ais-postgres-vol:/var/lib/postgresql/data
+      - vessel-postgres-vol:/var/lib/postgresql/data
 
 networks:
   postgres-net:
