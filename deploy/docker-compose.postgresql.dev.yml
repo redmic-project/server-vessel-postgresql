@@ -16,5 +16,5 @@ services:
           memory: 820M
 
 volumes:
-  ais-postgres-vol:
-    name: ais-postgres-vol
+  vessel-postgres-vol:
+    name: ${POSTGRES_DATA_VOLUME_NAME:-vessel-postgres-vol}
