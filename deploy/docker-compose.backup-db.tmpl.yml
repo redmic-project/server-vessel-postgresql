@@ -14,6 +14,20 @@ services:
       - PUSHGATEWAY_JOB
     networks:
       - postgres-net
+      - metric-net
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 1m
+        window: 3m
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 410M
 
 networks:
   postgres-net:
