@@ -10,6 +10,8 @@ services:
       - BUCKET_BACKUP_DB
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
+      - PUSHGATEWAY_HOST
+      - PUSHGATEWAY_JOB
     networks:
       - postgres-net
 
