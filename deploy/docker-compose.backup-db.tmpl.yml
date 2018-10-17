@@ -32,3 +32,5 @@ services:
 networks:
   postgres-net:
     external: true
+  metric-net:
+    external: true
