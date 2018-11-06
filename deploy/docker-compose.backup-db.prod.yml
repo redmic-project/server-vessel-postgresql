@@ -3,19 +3,7 @@ version: '3.5'
 services:
   backup-db:
     deploy:
-      mode: replicated
-      replicas: 1
       placement:
         constraints:
           - node.role == worker
           - engine.labels.availability_zone == ${AWS_REGION}${DESIRED_WORKER_AZ}
-      restart_policy:
-        condition: on-failure
-        delay: 1m
-        window: 3m
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          memory: 410M
