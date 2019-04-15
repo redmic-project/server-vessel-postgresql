@@ -19,16 +19,15 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 
 	-- Importante callSign y navStat en camelcase para coincidir con el esquema
 
-	CREATE TABLE ais.location_parent
+	CREATE TABLE ais.location
 	(
 	  uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
 	  mmsi integer NOT NULL,
 	  shape geometry(Point,4326),
 	  longitude double precision NOT NULL,
 	  latitude double precision NOT NULL,
-	  updated timestamp with time zone NOT NULL DEFAULT now(),
 	  tstamp timestamp with time zone NOT NULL,
-	  inserted timestamp with time zone NOT NULL,
+	  inserted timestamp with time zone NOT NULL DEFAULT now(),
 	  cog double precision,
 	  sog double precision,
 	  draught double precision,
@@ -52,16 +51,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	);
 
 	CREATE INDEX IF NOT EXISTS sidx_location_shape
-	  ON ais.location_parent
+	  ON ais.location
 	  USING gist (shape);
-
-	SELECT partman.create_parent('ais.location_parent', 'tstamp', 'native', '${INTERVAL}');
-	UPDATE partman.part_config SET infinite_time_partitions = true;
-
-	-- View
-
-	CREATE VIEW ais.location AS
-		SELECT * FROM ais.location_parent;
 
 	CREATE OR REPLACE FUNCTION ais.create_shape()
 	RETURNS TRIGGER
@@ -72,24 +63,18 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 			IF NEW.longitude IS NOT NULL AND NEW.latitude IS NOT NULL THEN
 				SELECT ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326) INTO NEW.shape;
 			END IF;
-
-			-- Generate UUID and initialize insert date
-			IF TG_OP = 'INSERT' THEN
-				NEW.inserted := now();
-				NEW.uuid := uuid_generate_v4();
-			END IF;
-
-			NEW.updated := now();
-			INSERT INTO ais.location_parent SELECT NEW.*;
 			RETURN NEW;
 		END;
 	\$\$;
 
 	CREATE TRIGGER location_create_shape_location
-		INSTEAD OF INSERT OR UPDATE
+		AFTER INSERT OR UPDATE
 		ON ais.location
 		FOR EACH ROW EXECUTE PROCEDURE ais.create_shape();
 
+
+	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}',p_trigger_return_null := false);
+	UPDATE partman.part_config SET infinite_time_partitions = true;
 	SELECT cron.schedule('@${INTERVAL}', \$\$SELECT partman.run_maintenance_proc(p_analyze := false)\$\$)
 
 EOSQL
