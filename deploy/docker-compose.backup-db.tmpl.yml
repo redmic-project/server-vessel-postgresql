@@ -13,7 +13,7 @@ services:
       - PUSHGATEWAY_HOST
       - PUSHGATEWAY_JOB
     networks:
-      - postgres-net
+      - postgres-ais-net
       - metric-net
     deploy:
       mode: replicated
@@ -30,7 +30,7 @@ services:
           memory: 410M
 
 networks:
-  postgres-net:
+  postgres-ais-net:
     external: true
   metric-net:
     external: true
