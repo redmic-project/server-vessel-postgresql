@@ -9,12 +9,12 @@ services:
       - PGDATA
       - INTERVAL
     networks:
-      postgres-ais-net:
+      postgres-vessel-net:
         aliases:
-          - ais-db
+          - vessel-db
     volumes:
       - vessel-postgres-vol:/var/lib/postgresql/data
 
 networks:
-  postgres-ais-net:
-    name: ${POSTGRES_NET_NAME:-postgres-ais-net}
+  postgres-vessel-net:
+    name: ${POSTGRES_NET_NAME:-postgres-vessel-net}
