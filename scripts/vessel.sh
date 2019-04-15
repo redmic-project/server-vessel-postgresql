@@ -3,87 +3,23 @@
 set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+	CREATE SCHEMA IF NOT EXISTS ais;
+
+	-- Install extensions
 	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+	CREATE EXTENSION IF NOT EXISTS pg_cron;
+	CREATE SCHEMA IF NOT EXISTS partman;
+	CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
+
+	CREATE ROLE partman WITH LOGIN;
+	GRANT ALL ON ALL TABLES IN SCHEMA partman TO partman;
+	GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA partman TO partman;
+	GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA partman TO partman;
+	GRANT ALL ON SCHEMA ais TO partman;
 
 	-- Importante callSign y navStat en camelcase para coincidir con el esquema
 
-	CREATE TABLE last_position
-	(
-	  mmsi integer PRIMARY KEY,
-	  shape geometry(Point,4326),
-	  longitude double precision NOT NULL,
-	  latitude double precision NOT NULL,
-	  updated timestamp with time zone NOT NULL DEFAULT now(),
-	  tstamp timestamp with time zone NOT NULL,
-	  uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
-	  inserted timestamp with time zone NOT NULL,
-	  cog double precision,
-	  sog double precision,
-	  draught double precision,
-	  type integer,
-	  a double precision,
-	  b double precision,
-	  c double precision,
-	  d double precision,
-	  imo integer,
-	  heading integer,
-	  "navStat" integer,
-	  name text,
-	  dest text,
-	  "callSign" text,
-	  eta text,
-	  CONSTRAINT "mmsi_date_last_position" UNIQUE ("mmsi", "tstamp")
-	)
-	WITH (
-	  OIDS=FALSE
-	);
-
-	CREATE INDEX sidx_last_position_shape
-	  ON last_position
-	  USING gist (shape);
-
-	CREATE FUNCTION before_insert_or_update_save_change_date()
-	RETURNS trigger
-    LANGUAGE plpgsql
-    AS \$\$
-		BEGIN
-			IF TG_OP = 'INSERT' THEN
-				NEW.inserted := now();
-			END IF;
-			IF TG_OP = 'UPDATE' THEN
-				NEW.inserted := OLD.inserted;
-			END IF;
-			NEW.updated := now();
-			RETURN NEW;
-		END;
-	\$\$;
-
-	CREATE TRIGGER tracking_before_insert_or_update_save_change_date
-	  BEFORE INSERT OR UPDATE
-	  ON last_position
-	  FOR EACH ROW
-	  EXECUTE PROCEDURE before_insert_or_update_save_change_date();
-
-	CREATE OR REPLACE FUNCTION create_shape()
-	RETURNS TRIGGER
-	LANGUAGE plpgsql
-	AS \$\$
-		BEGIN
-			IF NEW.longitude IS NOT NULL AND NEW.latitude IS NOT NULL THEN
-				SELECT ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326) INTO NEW.shape;
-			END IF;
-			RETURN NEW;
-		END;
-	\$\$;
-
-	CREATE TRIGGER create_shape_last_position
-		BEFORE INSERT OR UPDATE
-		ON last_position
-		FOR EACH ROW EXECUTE PROCEDURE create_shape();
-
-	-- Last Week
-
-	CREATE TABLE last_week
+	CREATE TABLE ais.location_parent
 	(
 	  uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
 	  mmsi integer NOT NULL,
@@ -109,26 +45,51 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  "callSign" text,
 	  eta text,
 	  PRIMARY KEY ("mmsi", "tstamp"),
-	  CONSTRAINT "mmsi_date_last_week" UNIQUE ("mmsi", "tstamp")
-	)
+	  CONSTRAINT "mmsi_date_location" UNIQUE ("mmsi", "tstamp")
+	) PARTITION BY RANGE (tstamp)
 	WITH (
 	  OIDS=FALSE
 	);
 
-	CREATE INDEX sidx_last_week_shape
-	  ON last_week
+	CREATE INDEX IF NOT EXISTS sidx_location_shape
+	  ON ais.location_parent
 	  USING gist (shape);
 
+	SELECT partman.create_parent('ais.location_parent', 'tstamp', 'native', 'hourly');
+	UPDATE partman.part_config SET infinite_time_partitions = true;
 
-	CREATE TRIGGER tracking_before_insert_or_update_save_change_date
-	  BEFORE INSERT OR UPDATE
-	  ON last_week
-	  FOR EACH ROW
-	  EXECUTE PROCEDURE before_insert_or_update_save_change_date();
+	-- View
 
+	CREATE VIEW ais.location AS
+		SELECT * FROM ais.location_parent;
 
-	CREATE TRIGGER create_shape_last_week
-		BEFORE INSERT OR UPDATE
-		ON last_week
-		FOR EACH ROW EXECUTE PROCEDURE create_shape();
+	CREATE OR REPLACE FUNCTION ais.create_shape()
+	RETURNS TRIGGER
+	LANGUAGE plpgsql
+	AS \$\$
+		BEGIN
+			-- Make geometry
+			IF NEW.longitude IS NOT NULL AND NEW.latitude IS NOT NULL THEN
+				SELECT ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326) INTO NEW.shape;
+			END IF;
+
+			-- Generate UUID and initialize insert date
+			IF TG_OP = 'INSERT' THEN
+				NEW.inserted := now();
+				NEW.uuid := uuid_generate_v4();
+			END IF;
+
+			NEW.updated := now();
+			INSERT INTO ais.location_parent SELECT NEW.*;
+			RETURN NEW;
+		END;
+	\$\$;
+
+	CREATE TRIGGER location_create_shape_location
+		INSTEAD OF INSERT OR UPDATE
+		ON ais.location
+		FOR EACH ROW EXECUTE PROCEDURE ais.create_shape();
+
+	SELECT cron.schedule('@hourly', \$\$SELECT partman.run_maintenance_proc(p_analyze := false)\$\$)
+
 EOSQL
