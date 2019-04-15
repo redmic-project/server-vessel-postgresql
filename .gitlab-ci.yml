@@ -102,4 +102,4 @@ deploy-backup-stable-branch-production:
 
 scheduled-run-development:
   extends: scheduled-run-production
-  script: ""
+  script: ":"
