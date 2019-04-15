@@ -20,6 +20,7 @@ RUN apk add --no-cache --virtual .build-deps build-base ca-certificates openssl 
 	    && cd .. && rm -rf pg_partman.tgz && rm -rf pg_partman-* \
 	    && echo "shared_preload_libraries='pg_partman_bgw,pg_cron'" >> /usr/local/share/postgresql/postgresql.conf.sample \
 	    && echo "checkpoint_timeout = 30min" >> /usr/local/share/postgresql/postgresql.conf.sample \
-	    && echo "max_wal_size = 2GB" >> /usr/local/share/postgresql/postgresql.conf.sample
+	    && echo "max_wal_size = 2GB" >> /usr/local/share/postgresql/postgresql.conf.sample \
+	    && mv /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-entrypoint-origin.sh
 
-COPY /scripts/ /docker-entrypoint-initdb.d/
+COPY rootfs /
