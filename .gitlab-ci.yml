@@ -101,5 +101,5 @@ deploy-backup-stable-branch-production:
     name: pro/backup-db
 
 scheduled-run-development:
-  extends: scheduled-run
+  extends: scheduled-run-production
   script: ""
