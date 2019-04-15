@@ -55,7 +55,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  ON ais.location_parent
 	  USING gist (shape);
 
-	SELECT partman.create_parent('ais.location_parent', 'tstamp', 'native', 'hourly');
+	SELECT partman.create_parent('ais.location_parent', 'tstamp', 'native', '${INTERVAL}');
 	UPDATE partman.part_config SET infinite_time_partitions = true;
 
 	-- View
@@ -90,6 +90,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 		ON ais.location
 		FOR EACH ROW EXECUTE PROCEDURE ais.create_shape();
 
-	SELECT cron.schedule('@hourly', \$\$SELECT partman.run_maintenance_proc(p_analyze := false)\$\$)
+	SELECT cron.schedule('@${INTERVAL}', \$\$SELECT partman.run_maintenance_proc(p_analyze := false)\$\$)
 
 EOSQL
