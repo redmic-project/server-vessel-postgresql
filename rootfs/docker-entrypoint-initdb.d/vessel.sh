@@ -26,7 +26,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  shape geometry(Point,4326),
 	  longitude double precision NOT NULL,
 	  latitude double precision NOT NULL,
-	  tstamp timestamp with time zone NOT NULL,
+	  tstamp timestamp without time zone NOT NULL,
 	  inserted timestamp with time zone NOT NULL DEFAULT now(),
 	  cog double precision,
 	  sog double precision,
@@ -61,19 +61,20 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 		BEGIN
 			-- Make geometry
 			IF NEW.longitude IS NOT NULL AND NEW.latitude IS NOT NULL THEN
-				SELECT ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326) INTO NEW.shape;
+				UPDATE ais.location
+				SET shape = (SELECT public.ST_SetSRID(public.ST_MakePoint(NEW.longitude, NEW.latitude), 4326))
+				WHERE uuid = NEW.uuid;
 			END IF;
 			RETURN NEW;
 		END;
 	\$\$;
 
 	CREATE TRIGGER location_create_shape_location
-		AFTER INSERT OR UPDATE
+		AFTER INSERT
 		ON ais.location
 		FOR EACH ROW EXECUTE PROCEDURE ais.create_shape();
 
-
-	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}',p_trigger_return_null := false);
+	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}');
 	UPDATE partman.part_config SET infinite_time_partitions = true;
 	SELECT cron.schedule('@${INTERVAL}', \$\$SELECT partman.run_maintenance_proc(p_analyze := false)\$\$)
 
