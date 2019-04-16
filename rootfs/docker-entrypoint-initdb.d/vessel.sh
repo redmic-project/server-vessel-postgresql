@@ -78,4 +78,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	UPDATE partman.part_config SET infinite_time_partitions = true;
 	SELECT cron.schedule('@${INTERVAL}', \$\$SELECT partman.run_maintenance_proc(p_analyze := false)\$\$)
 
+	CREATE VIEW ais.last_20m AS SELECT DISTINCT ON (mmsi) *
+	FROM ais.location
+	WHERE tstamp > current_timestamp - interval '20 minutes'
+	ORDER BY mmsi, tstamp DESC;
+
 EOSQL
