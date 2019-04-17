@@ -76,7 +76,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 
 	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}');
 	UPDATE partman.part_config SET infinite_time_partitions = true;
-	SELECT cron.schedule('@${INTERVAL}', \$\$SELECT partman.run_maintenance_proc(p_analyze := false)\$\$)
+	SELECT cron.schedule('@${INTERVAL}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$)
 
 	CREATE VIEW ais.last_20m AS SELECT DISTINCT ON (mmsi) *
 	FROM ais.location
