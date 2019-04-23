@@ -18,44 +18,33 @@ stages:
 variables:
   STACK: vessel
 
-deploy-support-branch-development:
+.deploy-development:
   variables:
-    COMPOSE_FILE: docker-compose.postgresql.tmpl.yml:docker-compose.postgresql.dev.yml
+    COMPOSE_FILE: docker-compose.${CI_PROJECT_NAME}.tmpl.yml:docker-compose.${CI_PROJECT_NAME}.dev.yml
   script:
     - >
       deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
       POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} INTERVAL=${INTERVAL}
   environment:
-    name: dev/postgresql
+    name: dev/${CI_PROJECT_NAME}
 
-deploy-stable-branch-development:
+.deploy-production:
   variables:
-    COMPOSE_FILE: docker-compose.postgresql.tmpl.yml:docker-compose.postgresql.dev.yml
-  script:
-    - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
-      POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} INTERVAL=${INTERVAL}
-  environment:
-    name: dev/postgresql
-
-deploy-stable-branch-production:
-  variables:
-    COMPOSE_FILE: docker-compose.postgresql.tmpl.yml:docker-compose.postgresql.prod.yml
+    COMPOSE_FILE: docker-compose.${CI_PROJECT_NAME}.tmpl.yml:docker-compose.${CI_PROJECT_NAME}.prod.yml
   script:
     - >
       deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
       POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD} INTERVAL=${INTERVAL}
       AWS_REGION=${AWS_REGION}
   environment:
-    name: pro/postgresql
+    name: pro/${CI_PROJECT_NAME}
 
-deploy-backup-support-branch-development:
-  extends: deploy-support-branch-development
+.deploy-backup:
+  extends: .deploy
   variables:
     SERVICES_TO_CHECK: ${STACK}_backup-db
     IMAGE_NAME: ${POSTGRES_BACKUP_IMAGE_NAME}
     IMAGE_TAG: ${POSTGRES_BACKUP_IMAGE_TAG}
-    COMPOSE_FILE: docker-compose.backup-db.tmpl.yml:docker-compose.backup-db.dev.yml
   script:
     - >
       deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
@@ -63,43 +52,44 @@ deploy-backup-support-branch-development:
       POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME} BUCKET_BACKUP_DB=${BUCKET_BACKUP_DB}
       AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       PUSHGATEWAY_HOST=${PUSHGATEWAY_HOST} PUSHGATEWAY_JOB=${PUSHGATEWAY_JOB}
-  environment:
-    name: dev/backup-db
 
-deploy-backup-stable-branch-development:
-  extends: deploy-stable-branch-development
+.deploy-backup-development:
+  extends: .deploy-backup
   variables:
-    SERVICES_TO_CHECK: ${STACK}_backup-db
-    IMAGE_NAME: ${POSTGRES_BACKUP_IMAGE_NAME}
-    IMAGE_TAG: ${POSTGRES_BACKUP_IMAGE_TAG}
+    SSH_REMOTE: ${DEV_SSH_REMOTE}
     COMPOSE_FILE: docker-compose.backup-db.tmpl.yml:docker-compose.backup-db.dev.yml
-  script:
-    - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
-      AWS_REGION=${AWS_REGION} POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME} BUCKET_BACKUP_DB=${BUCKET_BACKUP_DB}
-      AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      PUSHGATEWAY_HOST=${PUSHGATEWAY_HOST} PUSHGATEWAY_JOB=${PUSHGATEWAY_JOB}
   environment:
     name: dev/backup-db
 
-deploy-backup-stable-branch-production:
-  extends: deploy-stable-branch-production
+.deploy-backup-production:
+  extends: .deploy-backup
   variables:
-    SERVICES_TO_CHECK: ${STACK}_backup-db
-    IMAGE_NAME: ${POSTGRES_BACKUP_IMAGE_NAME}
-    IMAGE_TAG: ${POSTGRES_BACKUP_IMAGE_TAG}
+    SSH_REMOTE: ${PRO_SSH_REMOTE}
     COMPOSE_FILE: docker-compose.backup-db.tmpl.yml:docker-compose.backup-db.prod.yml
-  script:
-    - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
-      AWS_REGION=${AWS_REGION} POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME} BUCKET_BACKUP_DB=${BUCKET_BACKUP_DB}
-      AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      PUSHGATEWAY_HOST=${PUSHGATEWAY_HOST} PUSHGATEWAY_JOB=${PUSHGATEWAY_JOB}
   environment:
     name: pro/backup-db
 
+deploy-backup-support-branch-development:
+  extends: .deploy-backup-development
+  only:
+    - branches
+  except:
+    - master
+    - schedules
+
+deploy-backup-stable-branch-development:
+  extends: .deploy-backup-development
+  only:
+    - master
+  except:
+    - schedules
+
+deploy-backup-stable-branch-production:
+  extends: .deploy-backup-production
+  only:
+    - master
+  except:
+    - schedules
+
 scheduled-run-development:
-  extends: scheduled-run-production
   script: ":"
