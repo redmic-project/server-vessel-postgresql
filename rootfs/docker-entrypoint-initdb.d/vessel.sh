@@ -101,7 +101,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 			FOR obj IN SELECT object_identity
 						FROM pg_event_trigger_ddl_commands()
 						WHERE object_type = 'table'
-							AND object_identity LIKE 'ais.location_p%'
+							AND object_identity LIKE 'ais.location_%'
 			LOOP
 				CALL ais.append_trigger(obj.object_identity);
 				RAISE NOTICE 'Created trigger: %', obj.object_identity;
@@ -115,6 +115,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 
 	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}');
 	UPDATE partman.part_config SET infinite_time_partitions = true;
-	SELECT cron.schedule('@${INTERVAL}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$)
+	SELECT cron.schedule('@${INTERVAL}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$);
 
+	CREATE VIEW ais.last_20m AS SELECT DISTINCT ON (mmsi) *
+	FROM ais.location
+	WHERE tstamp > current_timestamp - interval '20 minutes'
+	ORDER BY mmsi, tstamp DESC;
 EOSQL
