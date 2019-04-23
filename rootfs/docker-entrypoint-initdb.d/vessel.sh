@@ -54,20 +54,20 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  ON ais.location
 	  USING gist (shape);
 
-	CREATE OR REPLACE FUNCTION ais.create_shape()
+	CREATE OR REPLACE FUNCTION ais.initialize_geom_and_dates()
 	RETURNS TRIGGER
 	LANGUAGE plpgsql
 	AS \$\$
 		BEGIN
 			-- Make geometry
 			IF NEW.longitude IS NOT NULL AND NEW.latitude IS NOT NULL THEN
-				SELECT ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326) INTO NEW.shape;
+				SELECT public.ST_SetSRID(public.ST_MakePoint(NEW.longitude, NEW.latitude), 4326) INTO NEW.shape;
 			END IF;
 
 			-- Generate UUID and initialize insert date
 			IF TG_OP = 'INSERT' THEN
 				NEW.inserted := now();
-				NEW.uuid := uuid_generate_v4();
+				NEW.uuid := public.uuid_generate_v4();
 			END IF;
 
 			NEW.updated := now();
@@ -87,7 +87,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 			EXECUTE format('CREATE TRIGGER %I '
 			   'BEFORE INSERT OR UPDATE '
 			   'ON %s '
-			   'FOR EACH ROW EXECUTE PROCEDURE ais.create_shape()', trigger_name, table_name);
+			   'FOR EACH ROW EXECUTE PROCEDURE ais.initialize_geom_and_dates()', trigger_name, table_name);
 		END;
 	\$\$;
 
