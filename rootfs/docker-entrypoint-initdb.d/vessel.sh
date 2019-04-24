@@ -54,6 +54,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  ON ais.location
 	  USING gist (shape);
 
+	CREATE INDEX IF NOT EXISTS sidx_location_tstamp
+	  ON ais.location (tstamp);
+
 	CREATE OR REPLACE FUNCTION ais.initialize_geom_and_dates()
 	RETURNS TRIGGER
 	LANGUAGE plpgsql
@@ -113,7 +116,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	WHEN TAG IN ('CREATE TABLE')
 	EXECUTE PROCEDURE on_create_table_create_trigger();
 
-	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}');
+	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}', p_premake := 8);
 	UPDATE partman.part_config SET infinite_time_partitions = true;
 	SELECT cron.schedule('@${INTERVAL}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$);
 
