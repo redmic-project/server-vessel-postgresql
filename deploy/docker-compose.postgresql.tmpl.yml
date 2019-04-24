@@ -4,17 +4,18 @@ services:
   postgresql:
     image: ${IMAGE_NAME}:${IMAGE_TAG:-latest}
     environment:
+      - POSTGRES_DB
       - POSTGRES_PASSWORD
       - POSTGRES_USER
-      - POSTGRES_DB
       - PGDATA
+      - INTERVAL
     networks:
-      postgres-net:
+      postgres-vessel-net:
         aliases:
-          - ais-db
+          - vessel-db
     volumes:
       - vessel-postgres-vol:/var/lib/postgresql/data
 
 networks:
-  postgres-net:
-    external: true
+  postgres-vessel-net:
+    name: ${POSTGRES_NET_NAME:-postgres-vessel-net}
