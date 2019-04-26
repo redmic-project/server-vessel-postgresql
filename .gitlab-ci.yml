@@ -91,5 +91,9 @@ deploy-backup-stable-branch-production:
   except:
     - schedules
 
+.scheduled-run:
+  variables:
+    SERVICE: ${STACK}_backup-db
+
 scheduled-run-development:
-  script: ":"
+  script: ':'
