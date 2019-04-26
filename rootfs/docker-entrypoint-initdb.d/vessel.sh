@@ -54,8 +54,14 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  ON ais.location
 	  USING gist (shape);
 
-	CREATE INDEX IF NOT EXISTS sidx_location_tstamp
-	  ON ais.location (tstamp);
+	CREATE INDEX IF NOT EXISTS sidx_location_tstamp_desc
+	  ON ais.location (tstamp DESC);
+
+	CREATE INDEX IF NOT EXISTS sidx_location_mmsi
+	  ON ais.location (mmsi);
+
+	CREATE INDEX IF NOT EXISTS sidx_location_tstamp_mmsi
+	  ON ais.location (tstamp, mmsi);
 
 	CREATE OR REPLACE FUNCTION ais.initialize_geom_and_dates()
 	RETURNS TRIGGER
@@ -116,12 +122,12 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	WHEN TAG IN ('CREATE TABLE')
 	EXECUTE PROCEDURE on_create_table_create_trigger();
 
-	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}', p_premake := 8);
-	UPDATE partman.part_config SET infinite_time_partitions = true;
-	SELECT cron.schedule('@${INTERVAL}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$);
+	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}', p_premake := 3);
 
-	CREATE VIEW ais.last_20m AS SELECT DISTINCT ON (mmsi) *
-	FROM ais.location
-	WHERE tstamp > current_timestamp - interval '20 minutes'
-	ORDER BY mmsi, tstamp DESC;
+	UPDATE partman.part_config
+	SET infinite_time_partitions = true,
+	 retention = '${RETENTION_TIME}',
+	 retention_keep_table = false;
+
+	SELECT cron.schedule('@${MAINTENANCE_INTERVAL}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$);
 EOSQL

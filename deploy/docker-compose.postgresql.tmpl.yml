@@ -9,6 +9,8 @@ services:
       - POSTGRES_USER
       - PGDATA
       - INTERVAL
+      - MAINTENANCE_INTERVAL
+      - RETENTION_TIME
     networks:
       postgres-vessel-net:
         aliases:
