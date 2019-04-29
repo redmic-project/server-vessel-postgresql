@@ -3,10 +3,7 @@ FROM mdillon/postgis:11-alpine
 LABEL maintainer="info@redmic.es"
 
 ENV PG_CRON_VERSION="1.1.4" \
-	PG_PARTMAN_VERSION="4.0.0" \
-	INTERVAL="hourly" \
-	MAINTENANCE_INTERVAL="30 * * * *" \
-	RETENTION_TIME="7 days"
+	PG_PARTMAN_VERSION="4.0.0"
 
 RUN apk add --no-cache --virtual \
 		.build-deps \
