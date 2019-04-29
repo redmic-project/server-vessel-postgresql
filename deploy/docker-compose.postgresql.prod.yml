@@ -8,7 +8,6 @@ services:
       placement:
         constraints:
           - node.role == worker
-          - engine.labels.availability_zone == ${AWS_REGION}${DESIRED_WORKER_AZ}
       restart_policy:
         delay: 1m
         window: 3m
