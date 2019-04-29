@@ -9,10 +9,16 @@ services:
       - POSTGRES_USER
       - PGDATA
       - INTERVAL
+      - MAINTENANCE_INTERVAL_MINUTE
+      - MAINTENANCE_INTERVAL_HOUR
+      - MAINTENANCE_INTERVAL_DAY_OF_MONTH
+      - MAINTENANCE_INTERVAL_MONTH
+      - MAINTENANCE_INTERVAL_DAY_OF_WEEK
+      - RETENTION_TIME
     networks:
       postgres-vessel-net:
         aliases:
-          - vessel-db
+          - ais-db
     volumes:
       - vessel-postgres-vol:/var/lib/postgresql/data
 

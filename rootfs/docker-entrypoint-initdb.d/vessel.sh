@@ -2,6 +2,16 @@
 
 set -e
 
+INTERVAL=${INTERVAL:-hourly}
+MAINTENANCE_INTERVAL_MINUTE=${MAINTENANCE_INTERVAL_MINUTE:-30}
+MAINTENANCE_INTERVAL_HOUR=${MAINTENANCE_INTERVAL_HOUR:-*}
+MAINTENANCE_INTERVAL_DAY_OF_MONTH=${MAINTENANCE_INTERVAL_DAY_OF_MONTH:-*}
+MAINTENANCE_INTERVAL_MONTH=${MAINTENANCE_INTERVAL_MONTH:-*}
+MAINTENANCE_INTERVAL_DAY_OF_WEEK=${MAINTENANCE_INTERVAL_DAY_OF_WEEK:-*}
+RETENTION_TIME=${RETENTION_TIME:-7 days}
+
+maintenanceInterval="$MAINTENANCE_INTERVAL_MINUTE $MAINTENANCE_INTERVAL_HOUR $MAINTENANCE_INTERVAL_DAY_OF_MONTH $MAINTENANCE_INTERVAL_MONTH $MAINTENANCE_INTERVAL_DAY_OF_WEEK"
+
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
 	CREATE SCHEMA IF NOT EXISTS ais;
 
@@ -54,8 +64,14 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	  ON ais.location
 	  USING gist (shape);
 
-	CREATE INDEX IF NOT EXISTS sidx_location_tstamp
-	  ON ais.location (tstamp);
+	CREATE INDEX IF NOT EXISTS sidx_location_tstamp_desc
+	  ON ais.location (tstamp DESC);
+
+	CREATE INDEX IF NOT EXISTS sidx_location_mmsi
+	  ON ais.location (mmsi);
+
+	CREATE INDEX IF NOT EXISTS sidx_location_tstamp_mmsi
+	  ON ais.location (tstamp, mmsi);
 
 	CREATE OR REPLACE FUNCTION ais.initialize_geom_and_dates()
 	RETURNS TRIGGER
@@ -116,12 +132,13 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	WHEN TAG IN ('CREATE TABLE')
 	EXECUTE PROCEDURE on_create_table_create_trigger();
 
-	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}', p_premake := 8);
-	UPDATE partman.part_config SET infinite_time_partitions = true;
-	SELECT cron.schedule('@${INTERVAL}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$);
+	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}',
+		p_premake := 3, p_automatic_maintenance := 'off');
 
-	CREATE VIEW ais.last_20m AS SELECT DISTINCT ON (mmsi) *
-	FROM ais.location
-	WHERE tstamp > current_timestamp - interval '20 minutes'
-	ORDER BY mmsi, tstamp DESC;
+	UPDATE partman.part_config
+	SET infinite_time_partitions = true,
+	 retention = '${RETENTION_TIME}',
+	 retention_keep_table = false;
+
+	SELECT cron.schedule('${maintenanceInterval}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$);
 EOSQL
