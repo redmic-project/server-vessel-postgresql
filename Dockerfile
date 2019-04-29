@@ -3,7 +3,10 @@ FROM mdillon/postgis:11-alpine
 LABEL maintainer="info@redmic.es"
 
 ENV PG_CRON_VERSION="1.1.4" \
-	PG_PARTMAN_VERSION="4.0.0"
+	PG_PARTMAN_VERSION="4.0.0" \
+	INTERVAL="hourly" \
+	MAINTENANCE_INTERVAL="30 * * * *" \
+	RETENTION_TIME="7 days"
 
 RUN apk add --no-cache --virtual \
 		.build-deps \
@@ -24,10 +27,10 @@ RUN apk add --no-cache --virtual \
 	tar xvzf /pg_partman.tgz && \
 	cd pg_partman-${PG_PARTMAN_VERSION} && \
 	make && \
-	make install && \
+	make NO_BGW=1 install && \
 	cd .. && \
 	rm -rf pg_partman.tgz pg_partman-* && \
-	echo "shared_preload_libraries='pg_partman_bgw,pg_cron'" >> /usr/local/share/postgresql/postgresql.conf.sample && \
+	echo "shared_preload_libraries='pg_cron'" >> /usr/local/share/postgresql/postgresql.conf.sample && \
 	echo "checkpoint_timeout = 30min" >> /usr/local/share/postgresql/postgresql.conf.sample && \
 	echo "max_wal_size = 2GB" >> /usr/local/share/postgresql/postgresql.conf.sample && \
 	mv /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-entrypoint-origin.sh
