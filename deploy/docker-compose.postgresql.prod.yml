@@ -13,10 +13,11 @@ services:
         window: 3m
       resources:
         limits:
-          cpus: '0.75'
-          memory: 1G
+          cpus: 1
+          memory: 2G
         reservations:
-          memory: 820M
+          cpus: '0.01'
+          memory: 512M
 
 volumes:
   vessel-postgres-vol:
