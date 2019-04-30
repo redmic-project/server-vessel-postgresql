@@ -19,9 +19,17 @@ services:
       postgres-vessel-net:
         aliases:
           - ais-db
+      gis-net:
+        aliases:
+          - ais-db
     volumes:
       - vessel-postgres-vol:/var/lib/postgresql/data
 
 networks:
   postgres-vessel-net:
     name: ${POSTGRES_NET_NAME:-postgres-vessel-net}
+    attachable: true
+
+  gis-net:
+    name: ${GIS_NET_NAME:-gis-net}
+    external: true

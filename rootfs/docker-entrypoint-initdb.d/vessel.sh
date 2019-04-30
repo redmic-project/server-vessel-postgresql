@@ -132,8 +132,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	WHEN TAG IN ('CREATE TABLE')
 	EXECUTE PROCEDURE on_create_table_create_trigger();
 
-	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}',
-		p_premake := 3, p_automatic_maintenance := 'off');
+	SELECT partman.create_parent('ais.location', 'tstamp', 'native', '${INTERVAL}', p_premake := 3);
 
 	UPDATE partman.part_config
 	SET infinite_time_partitions = true,
