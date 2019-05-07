@@ -3,7 +3,8 @@ FROM mdillon/postgis:11-alpine
 LABEL maintainer="info@redmic.es"
 
 ENV PG_CRON_VERSION="1.1.4" \
-	PG_PARTMAN_VERSION="4.0.0"
+	PG_PARTMAN_VERSION="4.0.0" \
+	POSTGRES_WORK_MEM="1GB"
 
 RUN apk add --no-cache --virtual \
 		.build-deps \
