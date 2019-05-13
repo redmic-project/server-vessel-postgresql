@@ -15,6 +15,9 @@ maintenanceInterval="$MAINTENANCE_INTERVAL_MINUTE $MAINTENANCE_INTERVAL_HOUR $MA
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
 	CREATE SCHEMA IF NOT EXISTS ais;
 
+	CREATE USER "${EXPORTER_USER}" WITH PASSWORD '${EXPORTER_PASS}';
+	GRANT pg_monitor, pg_read_all_settings, pg_read_all_stats, pg_stat_scan_tables TO "${EXPORTER_USER}";
+
 	-- Install extensions
 	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 	CREATE EXTENSION IF NOT EXISTS pg_cron;
