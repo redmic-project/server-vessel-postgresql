@@ -17,6 +17,9 @@ services:
       - MAINTENANCE_INTERVAL_DAY_OF_WEEK
       - RETENTION_TIME
     networks:
+      postgres-net:
+        aliases:
+          - ais-db
       postgres-vessel-net:
         aliases:
           - ais-db
@@ -28,8 +31,13 @@ services:
 
 networks:
   postgres-vessel-net:
-    name: ${POSTGRES_NET_NAME:-postgres-vessel-net}
+    name: ${POSTGRES_VESSEL_NET_NAME:-postgres-vessel-net}
+    driver: overlay
     attachable: true
+
+  postgres-net:
+    name: ${POSTGRES_NET_NAME:-postgres-net}
+    external: true
 
   gis-net:
     name: ${GIS_NET_NAME:-gis-net}
