@@ -139,8 +139,54 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 
 	UPDATE partman.part_config
 	SET infinite_time_partitions = true,
-	 retention = '${RETENTION_TIME}',
-	 retention_keep_table = false;
+		retention = '${RETENTION_TIME}',
+		retention_keep_table = false;
 
 	SELECT cron.schedule('${maintenanceInterval}', \$\$CALL partman.run_maintenance_proc(p_analyze := false)\$\$);
+
+	-- Limpieza de datos que no sean de Canarias
+
+	CREATE TABLE ais.limits (
+		id serial PRIMARY KEY,
+		shape geometry(Polygon,4326) NOT NULL,
+		start_date INTERVAL NOT NULL,
+		end_date INTERVAL NOT NULL,
+		note text
+	)
+	WITH (
+		OIDS=FALSE
+	);
+
+	CREATE INDEX IF NOT EXISTS sidx_limits_shape
+  		ON ais.limits
+  		USING gist (shape);
+
+	CREATE OR REPLACE FUNCTION ais.clean_position(geom geometry, start_date timestamp with time zone, end_date timestamp with time zone)
+	RETURNS void AS \$\$
+		BEGIN
+			-- Verifica que start_date es mayor que end_date
+			IF start_date > end_date THEN
+				RAISE EXCEPTION 'Interval dates erroneous: % - %', start_date, end_date
+					USING HINT = 'Please check your interval';
+			END IF;
+
+			DELETE FROM ais.location
+			WHERE tstamp >= start_date
+				AND tstamp < end_date
+				AND not ST_Intersects(shape, geom);
+		END;
+	\$\$ LANGUAGE plpgsql;
+
+	-- Verifica que la geometría es un polígono o multipolígono
+	INSERT INTO ais.limits (shape, start_date, end_date, note)
+	VALUES ('SRID=4326;POLYGON((-18.4166666666667 27.3833333333333,-18.4166666666667 29.6166666666667,-13.1 29.6166666666667,-13.1 27.3833333333333,-18.4166666666667 27.3833333333333))',
+		interval '75 minutes', interval '60 minutes', 'Bbox de CANREP. Todos los barcos que caen fuera de esta zona son eliminados pasado 1 hora');
+
+
+	;
+	SELECT cron.schedule('15 * * * *', \$\$SELECT ais.clean_position(geom, NOW() - start_date, NOW() - end_date) FROM ais.limits WHERE id = 1\$\$);
+
 EOSQL
+
+
+
