@@ -16,6 +16,8 @@ services:
       - MAINTENANCE_INTERVAL_MONTH
       - MAINTENANCE_INTERVAL_DAY_OF_WEEK
       - RETENTION_TIME
+      - EXPORTER_USER
+      - EXPORTER_PASS
     networks:
       postgres-net:
         aliases:
