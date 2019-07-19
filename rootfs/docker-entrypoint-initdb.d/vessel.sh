@@ -102,9 +102,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 			trigger_name := 'create_' || replace(table_name, '.', '_');
 
 			EXECUTE format('CREATE TRIGGER %I '
-			   'BEFORE INSERT OR UPDATE '
-			   'ON %s '
-			   'FOR EACH ROW EXECUTE PROCEDURE ais.initialize_geom_and_dates()', trigger_name, table_name);
+				'BEFORE INSERT OR UPDATE '
+				'ON %s '
+				'FOR EACH ROW EXECUTE PROCEDURE ais.initialize_geom_and_dates()', trigger_name, table_name);
 		END;
 	\$\$;
 
@@ -151,13 +151,13 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	);
 
 	CREATE INDEX IF NOT EXISTS sidx_limits_shape
-  		ON ais.limits
-  		USING gist (shape);
+		ON ais.limits
+		USING gist (shape);
 
-  	-- -------------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
 	-- Elimina registros que no interseccionan con la geometría pasada
 	-- de todas las particiones, salvo las últimas. Por defecto 2
-    -- -------------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
 
 	CREATE OR REPLACE FUNCTION ais.clean_position(parent_table_in text, geom geometry, offset_p int default 2)
 	RETURNS void AS \$\$
@@ -175,10 +175,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 			FOR obj IN SELECT concat(schemaname, '.', relname) AS "tablename"
 							FROM pg_stat_user_tables
 							WHERE relname IN (SELECT partition_tablename
-											  FROM partman.show_partitions(parent_table_in, 'DESC')
-											  OFFSET offset_partition)
+											FROM partman.show_partitions(parent_table_in, 'DESC')
+											OFFSET offset_partition)
 			LOOP
-			    EXECUTE 'DELETE FROM ' || obj.tablename || ' WHERE NOT ST_Intersects(shape, $1)' USING geom;
+				EXECUTE 'DELETE FROM ' || obj.tablename || ' WHERE NOT ST_Intersects(shape, $1)' USING geom;
 				RAISE NOTICE 'Cleaned table: %', obj.tablename;
 			END LOOP;
 		END;
@@ -194,7 +194,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	-- Libera el espacio en disco de los registros eliminados, para ello
 	-- se usa la función clúster que reescribe los datos en el disco,
 	-- utilizando un índice
-    -- -------------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
 
 	CREATE OR REPLACE PROCEDURE ais.vacuum_partitions()
 	LANGUAGE plpgsql
@@ -203,24 +203,24 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 			obj RECORD;
 		BEGIN
 			FOR obj IN SELECT concat(schemaname, '.', relname) AS "tablename",
-							  concat(relname, '_shape_idx') as "index"
+							concat(relname, '_shape_idx') as "index"
 						FROM pg_stat_user_tables
 						WHERE relname LIKE 'location_p%' AND n_tup_del > 0
 			LOOP
-			    EXECUTE 'CLUSTER ' || obj.tablename || ' USING ' || obj.index;
+				EXECUTE 'CLUSTER ' || obj.tablename || ' USING ' || obj.index;
 				RAISE NOTICE 'Vacuumed table: %', obj.tablename;
 			END LOOP;
 		END;
 	\$\$;
 
 	COMMENT ON PROCEDURE ais.vacuum_partitions()
-    IS 'Libera el espacio en disco de los registros eliminados para ello se usa la función clúster que reescribe los datos en el disco, utilizando un índice';
+	IS 'Libera el espacio en disco de los registros eliminados para ello se usa la función clúster que reescribe los datos en el disco, utilizando un índice';
 
 	SELECT cron.schedule('20 */2 * * *', \$\$CALL ais.vacuum_partitions()\$\$);
 
 	-- -------------------------------------------------------------------------
 	-- Agrupa las particiones en nuevas particiones mayores
-    -- -------------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
 
 	CREATE OR REPLACE FUNCTION ais.aggs_partitions(p_parent_table text, p_grounp_by interval,
 		clean_partition boolean default true, p_conjunction text default '_p',
@@ -244,16 +244,16 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 		FROM partman.part_config
 		WHERE parent_table = p_parent_table;
 
-	    SELECT regexp_replace(p_parent_table, '\w+\.(.*)', '\1')
-	    	INTO table_name;
+		SELECT regexp_replace(p_parent_table, '\w+\.(.*)', '\1')
+			INTO table_name;
 
-	    SELECT concat(table_name, p_conjunction)
-	    	INTO partition_preffix;
+		SELECT concat(table_name, p_conjunction)
+			INTO partition_preffix;
 
-	    SELECT length(concat(partition_preffix, regexp_replace(datetime_pattern, '\d', '', 'g')))
-	    	INTO partition_name_length;
+		SELECT length(concat(partition_preffix, regexp_replace(datetime_pattern, '\d', '', 'g')))
+			INTO partition_name_length;
 
-	    FOR d IN SELECT inter FROM (
+		FOR d IN SELECT inter FROM (
 					SELECT to_date(replace(partition_tablename, partition_preffix, ''), datetime_pattern) as inter
 					FROM partman.show_partitions(p_parent_table)
 					WHERE partition_tablename LIKE (partition_preffix || '%')
@@ -262,22 +262,22 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 				WHERE inter < NOW() - p_grounp_by * 2
 				GROUP BY inter
 				ORDER BY inter
-	    LOOP
-	    	start_interval:=d.inter;
-	    	end_interval:=d.inter + p_grounp_by;
+		LOOP
+			start_interval:=d.inter;
+			end_interval:=d.inter + p_grounp_by;
 
 			SELECT concat(p_parent_table, p_conjunction, replace(d.inter::text, '-', '_'))
 				INTO partition_name;
 
-	    	EXECUTE 'CREATE TABLE IF NOT EXISTS ' || partition_name || ' (LIKE ' || template_table_struct || ')';
+			EXECUTE 'CREATE TABLE IF NOT EXISTS ' || partition_name || ' (LIKE ' || template_table_struct || ')';
 			EXECUTE 'INSERT INTO ' || partition_name || ' SELECT * FROM ' ||
-	    			 p_parent_table || ' WHERE ' || control_field || ' >= $1 AND ' || control_field || ' < $2' USING start_interval, end_interval;
+					 p_parent_table || ' WHERE ' || control_field || ' >= $1 AND ' || control_field || ' < $2' USING start_interval, end_interval;
 
-	    	--
-	    	-- Find partitions with data in the interval and detach it from parent table
-	    	--
-		    FOR g IN SELECT inter
-		    		  FROM (
+			--
+			-- Find partitions with data in the interval and detach it from parent table
+			--
+			FOR g IN SELECT inter
+					FROM (
 						SELECT to_timestamp(replace(partition_tablename, partition_preffix, ''), datetime_pattern) as inter
 						FROM partman.show_partitions(p_parent_table)
 						WHERE partition_tablename LIKE (partition_preffix || '%')
@@ -289,11 +289,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 					INTO detach_partition_name;
 
 				IF clean_partition THEN
-					EXECUTE 'ALTER TABLE ' || p_parent_table || ' DETACH PARTITION ' || detach_partition_name;
-					RAISE NOTICE 'Detached partition: %', detach_partition_name;
-				ELSE
 					EXECUTE 'DROP TABLE ' || detach_partition_name;
 					RAISE NOTICE 'Dropped partition: %', detach_partition_name;
+				ELSE
+					EXECUTE 'ALTER TABLE ' || p_parent_table || ' DETACH PARTITION ' || detach_partition_name;
+					RAISE NOTICE 'Detached partition: %', detach_partition_name;
 				END IF;
 			END LOOP;
 
@@ -302,7 +302,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 			--
 			EXECUTE 'ALTER TABLE ' || p_parent_table || ' ATTACH PARTITION ' || partition_name ||
 					' FOR VALUES FROM (''' || start_interval || ''') TO (''' || end_interval || ''')';
-	    END LOOP;
+		END LOOP;
 	END;
 	\$\$ LANGUAGE plpgsql;
 
