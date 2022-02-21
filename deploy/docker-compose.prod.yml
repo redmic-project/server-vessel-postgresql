@@ -1,0 +1,17 @@
+version: '3.5'
+
+services:
+  postgresql:
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+
+volumes:
+  data-vol:
+    name: ${DATA_VOL_NAME}
+    driver: 'cloudstor:aws'
+    driver_opts:
+      backing: relocatable
+      size: 50
+      ebstype: gp2

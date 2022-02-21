@@ -7,105 +7,14 @@ include:
     file: '/deployment.yml'
   - project: 'redmic-project/gitlab-ci-templates'
     ref: master
-    file: '/maintenance.yml'
+    file: '/deployment-custom-image.yml'
 
 stages:
+  - pre-package
   - package
-  - test-package
+  - post-package
   - deploy
-  - maintenance
 
-variables:
-  STACK: vessel
-
-.deploy-development:
+.deploy:
   variables:
-    COMPOSE_FILE: docker-compose.${CI_PROJECT_NAME}.tmpl.yml:docker-compose.${CI_PROJECT_NAME}.dev.yml
-  script:
-    - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} POSTGRES_USER=${POSTGRES_USER}
-      POSTGRES_PASSWORD=${POSTGRES_PASSWORD} INTERVAL=${INTERVAL}
-      MAINTENANCE_INTERVAL_MINUTE="${MAINTENANCE_INTERVAL_MINUTE}"
-      MAINTENANCE_INTERVAL_HOUR="${MAINTENANCE_INTERVAL_HOUR}"
-      MAINTENANCE_INTERVAL_DAY_OF_MONTH="${MAINTENANCE_INTERVAL_DAY_OF_MONTH}"
-      MAINTENANCE_INTERVAL_MONTH="${MAINTENANCE_INTERVAL_MONTH}"
-      MAINTENANCE_INTERVAL_DAY_OF_WEEK="${MAINTENANCE_INTERVAL_DAY_OF_WEEK}" RETENTION_TIME="${RETENTION_TIME}"
-      POSTGRES_WORK_MEM=${POSTGRES_WORK_MEM} EXPORTER_USER=${EXPORTER_USER} EXPORTER_PASS=${EXPORTER_PASS}
-  environment:
-    name: dev/${CI_PROJECT_NAME}
-
-.deploy-production:
-  variables:
-    COMPOSE_FILE: docker-compose.${CI_PROJECT_NAME}.tmpl.yml:docker-compose.${CI_PROJECT_NAME}.prod.yml
-  script:
-    - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} POSTGRES_USER=${POSTGRES_USER}
-      POSTGRES_PASSWORD=${POSTGRES_PASSWORD} INTERVAL=${INTERVAL}
-      MAINTENANCE_INTERVAL_MINUTE="${MAINTENANCE_INTERVAL_MINUTE}"
-      MAINTENANCE_INTERVAL_HOUR="${MAINTENANCE_INTERVAL_HOUR}"
-      MAINTENANCE_INTERVAL_DAY_OF_MONTH="${MAINTENANCE_INTERVAL_DAY_OF_MONTH}"
-      MAINTENANCE_INTERVAL_MONTH="${MAINTENANCE_INTERVAL_MONTH}"
-      MAINTENANCE_INTERVAL_DAY_OF_WEEK="${MAINTENANCE_INTERVAL_DAY_OF_WEEK}" RETENTION_TIME="${RETENTION_TIME}"
-      POSTGRES_WORK_MEM=${POSTGRES_WORK_MEM} EXPORTER_USER=${EXPORTER_USER} EXPORTER_PASS=${EXPORTER_PASS}
-      AWS_REGION=${AWS_REGION}
-  environment:
-    name: pro/${CI_PROJECT_NAME}
-
-.deploy-backup:
-  extends: .deploy
-  variables:
-    SERVICES_TO_CHECK: ${STACK}_backup-db
-    IMAGE_NAME: ${POSTGRES_BACKUP_IMAGE_NAME}
-    IMAGE_TAG: ${POSTGRES_BACKUP_IMAGE_TAG}
-  script:
-    - >
-      deploy.sh IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} COMPOSE_FILE=${COMPOSE_FILE}
-      AWS_REGION=${AWS_REGION} POSTGRES_USER=${POSTGRES_USER} POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME} BUCKET_BACKUP_DB=${BUCKET_BACKUP_DB}
-      AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      PUSHGATEWAY_HOST=${PUSHGATEWAY_HOST} PUSHGATEWAY_JOB=${PUSHGATEWAY_JOB}
-
-.deploy-backup-development:
-  extends: .deploy-backup
-  variables:
-    SSH_REMOTE: ${DEV_SSH_REMOTE}
-    COMPOSE_FILE: docker-compose.backup-db.tmpl.yml:docker-compose.backup-db.dev.yml
-  environment:
-    name: dev/backup-db
-
-.deploy-backup-production:
-  extends: .deploy-backup
-  variables:
-    SSH_REMOTE: ${PRO_SSH_REMOTE}
-    COMPOSE_FILE: docker-compose.backup-db.tmpl.yml:docker-compose.backup-db.prod.yml
-  environment:
-    name: pro/backup-db
-
-deploy-backup-support-branch-development:
-  extends: .deploy-backup-development
-  only:
-    - branches
-  except:
-    - master
-    - schedules
-
-deploy-backup-stable-branch-development:
-  extends: .deploy-backup-development
-  only:
-    - master
-  except:
-    - schedules
-
-deploy-backup-stable-branch-production:
-  extends: .deploy-backup-production
-  only:
-    - master
-  except:
-    - schedules
-
-.scheduled-run:
-  variables:
-    SERVICE: ${STACK}_backup-db
-
-scheduled-run-development:
-  script: ':'
+    STACK: vessel

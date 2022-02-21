@@ -1,36 +1,43 @@
-FROM mdillon/postgis:11-alpine
+ARG POSTGIS_IMAGE_TAG="11-3.2-alpine"
+FROM postgis/postgis:${POSTGIS_IMAGE_TAG}
 
 LABEL maintainer="info@redmic.es"
 
-ENV PG_CRON_VERSION="1.1.4" \
-	PG_PARTMAN_VERSION="4.0.0" \
-	POSTGRES_WORK_MEM="1GB"
+ARG PG_CRON_VERSION="1.4.1" \
+	PG_PARTMAN_VERSION="4.6.0" \
+	BUILD_BASE_VERSION="0.5-r2" \
+	CLANG_VERSION="12.0.1-r1" \
+	LLVM_VERSION="12.0.1-r0" \
+	CA_CERTIFICATES_VERSION="20211220-r0" \
+	OPENSSL_VERSION="1.1.1l-r8" \
+	TAR_VERSION="1.34-r0"
 
-RUN apk add --no-cache --virtual \
-		.build-deps \
-		build-base \
-		ca-certificates \
-		openssl \
-		tar && \
-	wget -O /pg_cron.tgz https://github.com/citusdata/pg_cron/archive/v${PG_CRON_VERSION}.tar.gz && \
-	tar xvzf /pg_cron.tgz && \
-	cd pg_cron-${PG_CRON_VERSION} && \
+# hadolint ignore=DL3003
+RUN apk add --no-cache --virtual .build-deps \
+		build-base="${BUILD_BASE_VERSION}" \
+		clang="${CLANG_VERSION}" \
+		llvm="${LLVM_VERSION}" \
+		ca-certificates="${CA_CERTIFICATES_VERSION}" \
+		openssl="${OPENSSL_VERSION}" \
+		tar="${TAR_VERSION}" && \
+# install pg_cron
+	wget -q -O pg_cron.tar.gz "https://github.com/citusdata/pg_cron/archive/v${PG_CRON_VERSION}.tar.gz" && \
+	tar -xzf pg_cron.tar.gz && \
+	cd pg_cron-* && \
 	sed -i.bak -e 's/-Werror//g' Makefile && \
 	sed -i.bak -e 's/-Wno-implicit-fallthrough//g' Makefile && \
 	make && \
 	make install && \
-	cd .. && \
-	rm -rf pg_cron.tgz pg_cron-* && \
-	wget -O /pg_partman.tgz https://github.com/pgpartman/pg_partman/archive/v${PG_PARTMAN_VERSION}.tar.gz && \
-	tar xvzf /pg_partman.tgz && \
-	cd pg_partman-${PG_PARTMAN_VERSION} && \
+	cd .. ; \
+# install pg_partman
+	wget -q -O pg_partman.tar.gz "https://github.com/pgpartman/pg_partman/archive/v${PG_PARTMAN_VERSION}.tar.gz" && \
+	tar -xzf pg_partman.tar.gz && \
+	cd pg_partman-* && \
 	make && \
 	make NO_BGW=1 install && \
-	cd .. && \
-	rm -rf pg_partman.tgz pg_partman-* && \
-	echo "shared_preload_libraries='pg_cron'" >> /usr/local/share/postgresql/postgresql.conf.sample && \
-	echo "checkpoint_timeout = 30min" >> /usr/local/share/postgresql/postgresql.conf.sample && \
-	echo "max_wal_size = 2GB" >> /usr/local/share/postgresql/postgresql.conf.sample && \
-	mv /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-entrypoint-origin.sh
+	cd .. ; \
+# clean
+	rm -rf pg_cron* pg_partman* && \
+	apk del .build-deps
 
-COPY rootfs /
+COPY docker-entrypoint-initdb.d /docker-entrypoint-initdb.d
