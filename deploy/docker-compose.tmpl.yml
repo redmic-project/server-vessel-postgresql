@@ -1,0 +1,72 @@
+version: '3.5'
+
+services:
+  postgresql:
+    image: ${IMAGE_NAME:-registry.gitlab.com/redmic-project/server/vessel/postgresql}:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: ${DOCKERFILE:-Dockerfile}
+      args:
+        POSTGIS_IMAGE_TAG:
+        PG_CRON_VERSION:
+        PG_PARTMAN_VERSION:
+        BUILD_BASE_VERSION:
+        CLANG_VERSION:
+        LLVM_VERSION:
+        CA_CERTIFICATES_VERSION:
+        OPENSSL_VERSION:
+        TAR_VERSION:
+    command: >
+      -c shared_preload_libraries=${SHARED_PRELOAD_LIBRARIES}
+      -c checkpoint_timeout=${CHECKPOINT_TIMEOUT}
+      -c cron.database_name=${POSTGRES_DB}
+      -c work_mem=${WORK_MEM}
+      -c max_wal_size=${MAX_WAL_SIZE}
+    environment:
+      POSTGRES_DB:
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+      PGDATA:
+      INTERVAL:
+      RETENTION_TIME:
+      MAINTENANCE_INTERVAL_MINUTE:
+      MAINTENANCE_INTERVAL_HOUR:
+      MAINTENANCE_INTERVAL_DAY_OF_MONTH:
+      MAINTENANCE_INTERVAL_MONTH:
+      MAINTENANCE_INTERVAL_DAY_OF_WEEK:
+      EXPORTER_USER:
+      EXPORTER_PASS:
+    networks:
+      gis-net:
+        aliases:
+          - ${NETWORK_ALIAS}
+      postgres-net:
+        aliases:
+          - ${NETWORK_ALIAS}
+    volumes:
+      - data-vol:/var/lib/postgresql/data
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS:-1}
+      restart_policy:
+        delay: ${RESTART_DELAY:-10s}
+      update_config:
+        delay: ${UPDATE_DELAY:-1m}
+      resources:
+        limits:
+          cpus: '${RESOURCES_LIMITS_CPUS:-1}'
+          memory: ${RESOURCES_LIMITS_MEMORY:-2G}
+        reservations:
+          cpus: '${RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          memory: ${RESOURCES_RESERVATIONS_MEMORY:-1200M}
+
+networks:
+  gis-net:
+    name: ${GIS_NET_NAME:-gis-net}
+    driver: ${GIS_NET_DRIVER:-overlay}
+    external: true
+
+  postgres-net:
+    name: ${POSTGRES_NET_NAME:-postgres-net}
+    driver: ${POSTGRES_NET_DRIVER:-overlay}
+    external: true

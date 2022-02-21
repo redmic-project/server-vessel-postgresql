@@ -1,0 +1,5 @@
+version: '3.5'
+
+volumes:
+  data-vol:
+    name: ${DATA_VOL_NAME}
