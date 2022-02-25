@@ -22,6 +22,7 @@ services:
       -c cron.database_name=${POSTGRES_DB}
       -c work_mem=${WORK_MEM}
       -c max_wal_size=${MAX_WAL_SIZE}
+      -c max_locks_per_transaction=${MAX_LOCKS_PER_TRANSACTION}
     environment:
       POSTGRES_DB:
       POSTGRES_USER:
